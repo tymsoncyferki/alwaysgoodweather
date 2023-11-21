@@ -1,0 +1,3 @@
+choose location
+get weather data
+adjust weather
