@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from plotnine import geom_point, ggplot, aes
 
-data = pd.read_csv('locations.csv')
+data = pd.read_csv('../data/locations.csv')
 y = data['hmax']  # only for tests
 X = data[['latitude', 'longitude']]
 lm = LinearRegression().fit(X.values, y.values)
