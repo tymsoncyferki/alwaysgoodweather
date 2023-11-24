@@ -3,15 +3,7 @@ import json
 from datetime import datetime, timedelta
 import pandas as pd
 
-
-class WeatherApi:
-    api_key = "797dbfda9acd48d6abb182425232111"
-
-    @staticmethod
-    def get_response_history(location, date, key=api_key):
-        response = requests.get(
-            f"https://api.weatherapi.com/v1/history.json?key={key}&q={location}&dt={date}")
-        return json.loads(response.text), response.status_code
+from app.weather_api import WeatherApi
 
 
 def add_data(df, variables, columns=None):
@@ -84,5 +76,3 @@ def save_historical_data(df, location):
     df = add_data(df, variables)
     df.reset_index(drop=True)
     df.to_csv("locations.csv")
-
-

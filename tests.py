@@ -1,5 +1,5 @@
 import unittest
-from weather_api import WeatherApi
+from app.weather_api import WeatherApi
 from datetime import datetime, timedelta
 
 
