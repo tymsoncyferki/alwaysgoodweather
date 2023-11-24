@@ -15,5 +15,3 @@ class TestWeatherApi(unittest.TestCase):
         self.assertEqual(response['location']['lat'], 52.08)
         self.assertEqual(response['location']['lon'], 21.03)
         self.assertEqual(response['location']['name'], "Piaseczno")
-
-
