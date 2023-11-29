@@ -1,9 +1,13 @@
+import os
+
 import requests
 import json
 from datetime import datetime, timedelta
 import pandas as pd
 
 from app.weather_api import WeatherApi
+
+data_path = os.environ.get("LOC_DATA")
 
 
 def add_data(df, variables, columns=None):
@@ -75,4 +79,5 @@ def save_historical_data(df, location):
     variables = get_historical_data(location)
     df = add_data(df, variables)
     df.reset_index(drop=True)
-    df.to_csv("locations.csv")
+    df.to_csv(data_path, index=False)
+    return df
