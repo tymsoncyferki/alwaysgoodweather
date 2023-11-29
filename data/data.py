@@ -81,3 +81,10 @@ def save_historical_data(df, location):
     df.reset_index(drop=True)
     df.to_csv(data_path, index=False)
     return df
+
+
+def allocate_data(df, continent, mintemp, maxtemp, avgtemp):
+    df.loc[df['continent'] == continent, 'mintemp'] = mintemp
+    df.loc[df['continent'] == continent, 'maxtemp'] = maxtemp
+    df.loc[df['continent'] == continent, 'avgtemp'] = avgtemp
+    return df
