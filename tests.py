@@ -1,5 +1,5 @@
 import unittest
-from data.data import add_data, get_historical_data, allocate_data
+from app.data.data import get_historical_data
 from app.weather_api import WeatherApi
 from datetime import datetime, timedelta
 
