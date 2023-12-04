@@ -4,7 +4,7 @@ from data.data import plot_map
 
 app_ui = ui.page_fluid(
     ui.panel_title("alwaysgoodweather.com"),
-    ui.input_slider("number", "Degrees", 0, 1000, 100),
+    ui.input_slider("number", "Degrees", 0, 500, 100),
     ui.output_text_verbatim("txt"),
     ui.output_plot("plot")
 )
@@ -13,7 +13,7 @@ app_ui = ui.page_fluid(
 def server(input, output, session):
     @render.text
     def txt():
-        return f"waether is fucked {input.number() * 2} degrees"
+        return f"weather is fucked {input.number() * 2} degrees"
 
     @render.plot
     def plot():

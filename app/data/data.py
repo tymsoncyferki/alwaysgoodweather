@@ -113,7 +113,7 @@ def plot_map(num_points, index, model, marker_size):
     geometry = [Point(xy) for xy in zip(df['longitude'], df['latitude'])]
     gdf = GeoDataFrame(df, geometry=geometry)
 
-    world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    world = gpd.read_file('data/maps/ne_110m_admin_0_countries.shp')
 
     ax = world.plot(figsize=(10, 6))
     gdf.plot(ax=ax, marker='s', c=gdf['temperature'], markersize=marker_size, legend=True, alpha=0.4)
