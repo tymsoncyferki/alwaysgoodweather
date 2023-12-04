@@ -2,6 +2,10 @@ import os
 
 from datetime import datetime, timedelta
 import pandas as pd
+import numpy as np
+from shapely.geometry import Point
+import geopandas as gpd
+from geopandas import GeoDataFrame
 
 from app.weather_api import WeatherApi
 
@@ -86,3 +90,31 @@ def allocate_data(df, continent, mintemp, maxtemp, avgtemp):
     df.loc[df['continent'] == continent, 'maxtemp'] = maxtemp
     df.loc[df['continent'] == continent, 'avgtemp'] = avgtemp
     return df
+
+
+def generate_points(num_points, index, model):
+    latitudes = np.linspace(-90, 90, int(np.sqrt(num_points)))
+    longitudes = np.linspace(-180, 180, int(2 * np.sqrt(num_points)))
+
+    points = []
+    for lat in latitudes:
+        for lon in longitudes:
+            point = (lat, lon)
+            temperature = model.predict(np.array([[lat, lon]]))
+            points.append((point[0], point[1], temperature[0][index]))
+
+    return points
+
+
+def plot_map(num_points, index, model, marker_size):
+
+    points = generate_points(num_points, index, model)
+    df = pd.DataFrame(points, columns=['latitude', 'longitude', 'temperature'])
+
+    geometry = [Point(xy) for xy in zip(df['longitude'], df['latitude'])]
+    gdf = GeoDataFrame(df, geometry=geometry)
+
+    world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+
+    ax = world.plot(figsize=(10, 6))
+    gdf.plot(ax=ax, marker='s', c=gdf['temperature'], markersize=marker_size, legend=True, alpha=0.4)
