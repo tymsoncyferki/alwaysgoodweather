@@ -7,8 +7,6 @@ from shapely.geometry import Point
 import geopandas as gpd
 from geopandas import GeoDataFrame
 
-from app.weather_api import WeatherApi
-
 data_path = os.environ.get("LOC_DATA")
 
 
@@ -21,6 +19,7 @@ def add_data(df, variables, columns=None):
 
 
 def get_historical_data(location_name):
+    from app.weather_api import WeatherApi
     maxtemp_his = -50
     mintemp_his = 50
     avgtemp_his = 0
