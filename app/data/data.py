@@ -9,6 +9,10 @@ from geopandas import GeoDataFrame
 
 data_path = os.environ.get("LOC_DATA")
 
+"""
+Set of functions to create dataframe 
+"""
+
 
 def add_data(df, variables, columns=None):
     if columns is None:
@@ -19,6 +23,12 @@ def add_data(df, variables, columns=None):
 
 
 def get_historical_data(location_name):
+    """
+    This function analyzes the last year of weather in the provided location. It aggregates data - extracts max, min
+    and average temperature.
+    :param location_name:
+    :return: aggregated temperature and location data
+    """
     from app.weather_api import WeatherApi
     maxtemp_his = -50
     mintemp_his = 50
