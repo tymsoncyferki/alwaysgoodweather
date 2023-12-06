@@ -15,7 +15,7 @@ app_ui = ui.page_fluid(
                              ui.output_text_verbatim("current_temp"),
                              ),
                       ui.nav("About",
-                             ui.input_slider("number", "Degrees", 100, 500, 150),
+                             # ui.input_slider("number", "Degrees", 100, 500, 150),
                              ui.output_plot("world_map"),
                              ),
                   ),
@@ -45,7 +45,8 @@ def server(input, output, session):
     @render.plot
     def world_map():
         model = load('temp_model.joblib')
-        return plot_map(input.number(), 2, model, -input.number() + 550)
+        # return plot_map(input.number(), 2, model, -input.number() + 550)
+        return plot_map(475, 2, model, 75)
 
 
 app = App(app_ui, server)
