@@ -2,9 +2,9 @@ from shiny import App, render, ui
 from joblib import load
 from data.data import plot_map
 from weather_api import WeatherApi
+import numpy as np
 
 app_ui = ui.page_fluid(
-
     ui.row(
         ui.column(3),
         ui.column(6,
@@ -13,6 +13,7 @@ app_ui = ui.page_fluid(
                       ui.nav("Weather",
                              ui.input_text("location", "Enter location:"),
                              ui.output_text_verbatim("current_temp"),
+                             ui.output_text_verbatim("desired_temp"),
                              ),
                       ui.nav("About",
                              # ui.input_slider("number", "Degrees", 100, 500, 150),
@@ -28,18 +29,34 @@ app_ui = ui.page_fluid(
 
 def server(input, output, session):
 
+    def get_data():
+        location = input.location()
+        response, code = WeatherApi.get_response_weather(location)
+        return response, code
+
     @render.text
     def current_temp():
-        location = input.location()
+        response, code = get_data()
+        print(response)
         try:
-            response, code = WeatherApi.get_response_weather(location)
-            print(response)
             region = response['location']['region']
             if region != "":
                 region = f'{region}, '
             return f"Current weather in {response['location']['name']}, {region}" \
                    f"{response['location']['country']} is {response['current']['temp_c']} Celsius degrees"
         except KeyError:
+            return ""
+
+    @render.text
+    def desired_temp():
+        response, code = get_data()
+        model = load('temp_model.joblib')
+        try:
+            lat = response['location']['lat']
+            lon = response['location']['lon']
+            temps = model.predict(np.array([[lat, lon]]))
+            return f"Yeeeey! The temperature is {round(temps[0][5], 2)} Celsius degrees. Have fun"
+        except (KeyError, IndexError):
             return ""
 
     @render.plot
