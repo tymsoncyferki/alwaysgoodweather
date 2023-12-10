@@ -3,8 +3,12 @@ from joblib import load
 from data.data import plot_map
 from weather_api import WeatherApi
 import numpy as np
+import shinyswatch
 
 app_ui = ui.page_fluid(
+
+    shinyswatch.theme.minty(),
+
     ui.row(
         ui.column(3),
         ui.column(6,
@@ -69,7 +73,7 @@ def server(input, output, session):
 
             return f"Yeeeey! The temperature is {round(temp)} Celsius degrees. Have fun"
         except (KeyError, IndexError):
-            return ""
+            return "No data"
 
     @render.plot
     def world_map():
