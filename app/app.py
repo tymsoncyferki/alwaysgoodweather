@@ -34,6 +34,16 @@ def server(input, output, session):
         response, code = WeatherApi.get_response_weather(location)
         return response, code
 
+    def scale_temp(model, lat, lon, temp):
+        predictions = model.predict(np.array([[lat, lon]]))[0]
+
+        if temp < predictions[2]:
+            slope, intercept = np.polyfit([predictions[0], predictions[2]], [predictions[3], predictions[5]], deg=1)
+        else:
+            slope, intercept = np.polyfit([predictions[1], predictions[2]], [predictions[4], predictions[5]], deg=1)
+
+        return slope * temp + intercept
+
     @render.text
     def current_temp():
         response, code = get_data()
@@ -54,8 +64,10 @@ def server(input, output, session):
         try:
             lat = response['location']['lat']
             lon = response['location']['lon']
-            temps = model.predict(np.array([[lat, lon]]))
-            return f"Yeeeey! The temperature is {round(temps[0][5], 2)} Celsius degrees. Have fun"
+
+            temp = scale_temp(model, lat, lon, response['current']['temp_c'])
+
+            return f"Yeeeey! The temperature is {round(temp)} Celsius degrees. Have fun"
         except (KeyError, IndexError):
             return ""
 
