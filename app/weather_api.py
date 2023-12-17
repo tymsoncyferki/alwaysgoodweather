@@ -28,3 +28,10 @@ class WeatherApi:
         response = requests.get(
             f"https://api.weatherapi.com/v1/forecast.json?key={key}&q={location}&days={days}&aqi=no&alerts=no")
         return json.loads(response.text), response.status_code
+
+    @staticmethod
+    def get_locations(prompt, key=api_key):
+        response = requests.get(
+            f"https://api.weatherapi.com/v1/search.json?key={key}&q={prompt}"
+        )
+        return json.loads(response.text), response.status_code
