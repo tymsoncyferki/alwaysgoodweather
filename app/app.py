@@ -20,10 +20,13 @@ app_ui = ui.page_fluid(
                       ui.nav("Weather",
                              # ui.input_selectize("prompt", "Enter location", choices=[]),
                              ui.tags.br(),
-                             ui.input_text("location", label="", placeholder="Enter location"),
+                             ui.tags.form(
+                                 ui.input_text("location", label="", placeholder="Enter location"),
+                                 ui.input_action_button("go", label="go")
+                             ),
                              ui.output_text("autocomplete"),
                              ui.tags.br(),
-                             ui.output_text_verbatim("current_temp"),
+                             # ui.output_text_verbatim("current_temp"),
                              ui.output_text_verbatim("desired_temp"),
 
                              ),
@@ -40,7 +43,6 @@ app_ui = ui.page_fluid(
 
 
 def server(input, output, session):
-
     # @reactive.Effect()
     # def _():
     #     prompt = input.location()
@@ -58,14 +60,13 @@ def server(input, output, session):
     def autocomplete():
         prompt = input.location()
         response, code = WeatherApi.get_locations(prompt)
-        print(session)
         names = ""
         n = len(response)
         if code == 200:
             for i, city in enumerate(response):
                 if i == 3:
                     break
-                if i+1 == n:
+                if i + 1 == n:
                     names += f"{city['name']}, {city['country']}"
                 else:
                     names += f"{city['name']}, {city['country']}\n "
@@ -87,32 +88,37 @@ def server(input, output, session):
 
         return slope * temp + intercept
 
+    # @render.text
+    # def current_temp():
+    #     response, code = get_data()
+    #     print(response)
+    #     try:
+    #         region = response['location']['region']
+    #         if region != "":
+    #             region = f'{region}, '
+    #         return f"Current weather in {response['location']['name']}, {region}" \
+    #                f"{response['location']['country']} is {response['current']['temp_c']} Celsius degrees"
+    #     except KeyError:
+    #         return ""
+
+    @output
     @render.text
-    def current_temp():
-        response, code = get_data()
-        print(response)
-        try:
-            region = response['location']['region']
-            if region != "":
-                region = f'{region}, '
-            return f"Current weather in {response['location']['name']}, {region}" \
-                   f"{response['location']['country']} is {response['current']['temp_c']} Celsius degrees"
-        except KeyError:
-            return ""
+    async def desired_temp():
+        input.go()
 
-    @render.text
-    def desired_temp():
-        response, code = get_data()
+        with reactive.isolate():
 
-        try:
-            lat = response['location']['lat']
-            lon = response['location']['lon']
+            response, code = get_data()
 
-            temp = scale_temp(lat, lon, response['current']['temp_c'])
+            try:
+                lat = response['location']['lat']
+                lon = response['location']['lon']
 
-            return f"Yeeeey! The temperature is {round(temp)} Celsius degrees. Have fun"
-        except (KeyError, IndexError):
-            return "No data"
+                temp = scale_temp(lat, lon, response['current']['temp_c'])
+
+                return f"Yeeeey! The temperature is {round(temp)} Celsius degrees. Have fun"
+            except (KeyError, IndexError):
+                return "No data"
 
     @render.plot
     def world_map():
