@@ -27,7 +27,8 @@ app_ui = ui.page_fluid(
                   ui.tags.br(),
                   ui.panel_title("alwaysgoodweather.com"),
                   ui.navset_tab(
-                      ui.nav("Forecast",
+                      ui.nav(
+                          "Forecast",
                              ui.tags.br(),
 
                              # input
