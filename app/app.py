@@ -19,6 +19,7 @@ code_w = None
 app_ui = ui.page_fluid(
 
     shinyswatch.theme.minty(),
+    ui.include_css("www/custom.css"),
 
     ui.row(
         ui.column(3),
@@ -36,7 +37,7 @@ app_ui = ui.page_fluid(
                                                       width='100%')
                                         ),
                                  ui.div({"class": "col-3"},
-                                        ui.input_action_button("go", label="Go", width='100%')
+                                        ui.input_action_button("go", label="Go", width='100%', class_="btn-primary")
                                         ),
                              ),
 
@@ -47,9 +48,7 @@ app_ui = ui.page_fluid(
                              ui.tags.br(),
 
                              # weather now
-
                              ui.output_ui("test"),
-                             ui.output_text_verbatim("desired_temp"),
 
                              ),
                   ),
@@ -73,6 +72,8 @@ def server(input, output, session):
     #             choices=names,
     #             server=True
     #         )
+
+    shinyswatch.theme_picker_server()
 
     @reactive.Effect()
     def _():
@@ -140,11 +141,6 @@ def server(input, output, session):
     #
     #     return names
 
-    def get_data():
-        location = input.location()
-        response_w, code_w = WeatherApi.get_response_weather(location)
-        return response_w, code_w
-
     def scale_temp(lat, lon, temp):
         predictions = model.predict(np.array([[lat, lon]]))[0]
 
@@ -184,10 +180,26 @@ def server(input, output, session):
     def test():
         input.go()
 
-        global code_w
+        global response_w, code_w
 
         if code_w == 200:
-            return ui.div(ui.output_image("image_now", height="64px"))
+
+            # calculate temp
+            lat = response_w['location']['lat']
+            lon = response_w['location']['lon']
+            temp = round(scale_temp(lat, lon, response_w['current']['temp_c']))
+
+            return ui.row(
+                ui.div({"class": "col-auto"},
+                       ui.img(src="https://cdn.weatherapi.com/weather/64x64/night/116.png", height='100%',
+                              style="display: inline-block;")),
+                ui.div({"class": "col-auto"},
+                       ui.h1(f"{temp}°")),
+                ui.div({"class": "col-auto"},
+                       ui.span("Wind: 5m/s"),
+                       ui.br(),
+                       ui.span("Rain: 0%"))
+            )
 
     @output
     @render.text
