@@ -8,6 +8,7 @@ from PIL import Image
 import requests
 from io import BytesIO
 from shiny.types import ImgData
+import random
 
 model = load('temp_model.joblib')
 
@@ -29,29 +30,29 @@ app_ui = ui.page_fluid(
                   ui.navset_tab(
                       ui.nav(
                           "Forecast",
-                             ui.tags.br(),
+                          ui.tags.br(),
 
-                             # input
-                             ui.row(
-                                 ui.div({"class": "col-9"},
-                                        ui.input_text("location", label="", placeholder="Enter location",
-                                                      width='100%')
-                                        ),
-                                 ui.div({"class": "col-3"},
-                                        ui.input_action_button("go", label="Go", width='100%', class_="btn-primary")
-                                        ),
-                             ),
+                          # input
+                          ui.row(
+                              ui.div({"class": "col-9"},
+                                     ui.input_text("location", label="", placeholder="Enter location",
+                                                   width='100%')
+                                     ),
+                              ui.div({"class": "col-3"},
+                                     ui.input_action_button("go", label="Go", width='100%', class_="btn-primary")
+                                     ),
+                          ),
 
-                             # suggestions
-                             ui.output_text("loc1"),
-                             ui.output_text("loc2"),
-                             ui.output_text("loc3"),
-                             ui.tags.br(),
+                          # suggestions
+                          ui.output_text("loc1"),
+                          ui.output_text("loc2"),
+                          ui.output_text("loc3"),
+                          ui.tags.br(),
 
-                             # weather now
-                             ui.output_ui("test"),
+                          # weather now
+                          ui.output_ui("test"),
 
-                             ),
+                      ),
                   ),
                   ),
         ui.column(3)
@@ -61,21 +62,6 @@ app_ui = ui.page_fluid(
 
 
 def server(input, output, session):
-    # @reactive.Effect()
-    # def _():
-    #     prompt = input.location()
-    #     response, code = WeatherApi.get_locations(prompt)
-    #     print(session)
-    #     if code == 200:
-    #         names = [city['name'] for city in response]
-    #         ui.update_selectize(
-    #             id="prompt",
-    #             choices=names,
-    #             server=True
-    #         )
-
-    shinyswatch.theme_picker_server()
-
     @reactive.Effect()
     def _():
         prompt = input.location()
@@ -125,23 +111,6 @@ def server(input, output, session):
                     break
         return name
 
-    # @render.text
-    # def autocomplete():
-    #     prompt = input.location()
-    #     response, code = WeatherApi.get_locations(prompt)
-    #     names = ""
-    #     n = len(response)
-    #     if code == 200:
-    #         for i, city in enumerate(response):
-    #             if i == 3:
-    #                 break
-    #             if i + 1 == n:
-    #                 names += f"{city['name']}, {city['country']}"
-    #             else:
-    #                 names += f"{city['name']}, {city['country']}\n "
-    #
-    #     return names
-
     def scale_temp(lat, lon, temp):
         predictions = model.predict(np.array([[lat, lon]]))[0]
 
@@ -152,31 +121,6 @@ def server(input, output, session):
 
         return slope * temp + intercept
 
-    # @render.text
-    # def current_temp():
-    #     response, code = get_data()
-    #     print(response)
-    #     try:
-    #         region = response['location']['region']
-    #         if region != "":
-    #             region = f'{region}, '
-    #         return f"Current weather in {response['location']['name']}, {region}" \
-    #                f"{response['location']['country']} is {response['current']['temp_c']} Celsius degrees"
-    #     except KeyError:
-    #         return ""
-
-    @render.image
-    def image_now():
-        input.go()
-
-        with reactive.isolate():
-            global response_w, code_w
-
-            if code_w == 200:
-                src = "www/night.png"
-
-                return {"src": src}
-
     @render.ui
     def test():
         input.go()
@@ -184,25 +128,34 @@ def server(input, output, session):
         global response_w, code_w
 
         if code_w == 200:
-
             # calculate temp
             lat = response_w['location']['lat']
             lon = response_w['location']['lon']
             temp = round(scale_temp(lat, lon, response_w['current']['temp_c']))
+            wind = random.randint(2, 6)
+            rain = random.randint(0, 3) * 5
 
-            return ui.row(
-                ui.div({"class": "col-auto"},
-                       ui.img(src="https://cdn.weatherapi.com/weather/64x64/night/116.png", height='100%',
-                              style="display: inline-block;")),
-                ui.div({"class": "col-auto"},
-                       ui.h1(f"{temp}°")),
-                ui.div({"class": "col-auto"},
-                       ui.span("Wind: 5m/s"),
-                       ui.br(),
-                       ui.span("Rain: 0%"))
+            return ui.div(
+                ui.row(
+                    ui.div({"class": "col-auto"},
+                           ui.img(src="https://cdn.weatherapi.com/weather/64x64/night/116.png", height='100%',
+                                  style="display: inline-block;")),
+                    ui.div({"class": "col-auto"},
+                           ui.h1(ui.output_text("tempp"), style="font-size: 3em;")),
+                    ui.div({"class": "col-auto"},
+                           ui.span(f"Wind: {wind}m/s"),
+                           ui.br(),
+                           ui.span(f"Rain: {rain}%"))
+                ),
+                ui.input_slider("time", label="", min=0, max=24, step=1, value=0)
             )
 
-    @output
+    @render.text
+    def tempp():
+        time = input.time()
+        # get temperture
+        return time
+
     @render.text
     async def desired_temp():
         input.go()
@@ -220,11 +173,6 @@ def server(input, output, session):
                 return f"Yeeeey! The temperature is {round(temp)} Celsius degrees. Have fun"
             except (KeyError, IndexError):
                 return "No data"
-
-    @render.plot
-    def world_map():
-        # return plot_map(input.number(), 2, model, -input.number() + 550)
-        return plot_map(475, 2, model, 75)
 
 
 app = App(app_ui, server)
