@@ -142,8 +142,8 @@ def server(input, output, session):
             return ui.div(
                 ui.row(
                     ui.div({"class": "col-auto"},
-                           ui.img(src="https://cdn.weatherapi.com/weather/64x64/night/116.png", height='100%',
-                                  style="display: inline-block;")),
+                           ui.output_ui("icon")
+                           ),
                     ui.div({"class": "col-auto"},
                            ui.h1(ui.output_text("temp"), style="font-size: 3em;")),
                     ui.div({"class": "col-auto"},
@@ -155,6 +155,25 @@ def server(input, output, session):
                                 max=(local_date + timedelta(hours=24)), step=timedelta(hours=1),
                                 value=local_date, time_format="%H", post=":00")
             )
+
+    @render.ui
+    def icon():
+        time = input.time()
+
+        global response_w
+
+        code = response_w['forecast']['forecastday'][0]['hour'][time.hour]["condition"]['code']
+
+        if response_w['forecast']['forecastday'][0]['hour'][time.hour]['is_day'] == 1:
+            if code == 1000 or code == 1003:
+                return ui.img(src="https://cdn.weatherapi.com/weather/64x64/day/113.png", height='100%',
+                              style="display: inline-block;")
+            else:
+                return ui.img(src="https://cdn.weatherapi.com/weather/64x64/day/116.png", height='100%',
+                              style="display: inline-block;")
+        else:
+            return ui.img(src="https://cdn.weatherapi.com/weather/64x64/night/116.png", height='100%',
+                          style="display: inline-block;")
 
     @render.text
     def temp():
@@ -179,8 +198,6 @@ def server(input, output, session):
         wind_scaled = round(wind_kph / 5) + 1
 
         return f"Wind: {wind_scaled}kph"
-
-
 
     @render.text
     async def desired_temp():
