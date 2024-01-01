@@ -9,6 +9,7 @@ import requests
 from io import BytesIO
 from shiny.types import ImgData
 import random
+from datetime import datetime, timedelta
 
 model = load('temp_model.joblib')
 
@@ -50,7 +51,7 @@ app_ui = ui.page_fluid(
                           ui.tags.br(),
 
                           # weather now
-                          ui.output_ui("test"),
+                          ui.output_ui("forecast"),
 
                       ),
                   ),
@@ -74,7 +75,7 @@ def server(input, output, session):
         with reactive.isolate():
             location = input.location()
             global response_w, code_w
-            response_w, code_w = WeatherApi.get_response_weather(location)
+            response_w, code_w = WeatherApi.get_response_forecast(location, 1)
 
     @render.text
     def loc1():
@@ -97,6 +98,8 @@ def server(input, output, session):
                 if i == 1:
                     name += f"{city['name']}, {city['country']}"
                     break
+        if input.go():
+            return ""
         return name
 
     @render.text
@@ -109,6 +112,8 @@ def server(input, output, session):
                 if i == 2:
                     name += f"{city['name']}, {city['country']}"
                     break
+        if input.go():
+            return ""
         return name
 
     def scale_temp(lat, lon, temp):
@@ -122,18 +127,17 @@ def server(input, output, session):
         return slope * temp + intercept
 
     @render.ui
-    def test():
+    def forecast():
         input.go()
 
         global response_w, code_w
 
         if code_w == 200:
-            # calculate temp
-            lat = response_w['location']['lat']
-            lon = response_w['location']['lon']
-            temp = round(scale_temp(lat, lon, response_w['current']['temp_c']))
             wind = random.randint(2, 6)
             rain = random.randint(0, 3) * 5
+
+            local_time = response_w['location']['localtime']
+            local_date = datetime.strptime(local_time, '%Y-%m-%d %H:%M')
 
             return ui.div(
                 ui.row(
@@ -141,20 +145,42 @@ def server(input, output, session):
                            ui.img(src="https://cdn.weatherapi.com/weather/64x64/night/116.png", height='100%',
                                   style="display: inline-block;")),
                     ui.div({"class": "col-auto"},
-                           ui.h1(ui.output_text("tempp"), style="font-size: 3em;")),
+                           ui.h1(ui.output_text("temp"), style="font-size: 3em;")),
                     ui.div({"class": "col-auto"},
-                           ui.span(f"Wind: {wind}m/s"),
-                           ui.br(),
+                           ui.span(ui.output_text("wind")),
                            ui.span(f"Rain: {rain}%"))
                 ),
-                ui.input_slider("time", label="", min=0, max=24, step=1, value=0)
+                ui.tags.style(".irs-grid-pol.small {height: 0px;}", type="text/css"),
+                ui.input_slider("time", label="", min=local_date,
+                                max=(local_date + timedelta(hours=24)), step=timedelta(hours=1),
+                                value=local_date, time_format="%H", post=":00")
             )
 
     @render.text
-    def tempp():
+    def temp():
         time = input.time()
-        # get temperture
-        return time
+
+        global response_w
+
+        lat = response_w['location']['lat']
+        lon = response_w['location']['lon']
+        temperature = response_w['forecast']['forecastday'][0]['hour'][time.hour]['temp_c']
+        temp_scaled = scale_temp(lat, lon, temperature)
+
+        return round(temp_scaled)
+
+    @render.text
+    def wind():
+        time = input.time()
+
+        global response_w
+
+        wind_kph = response_w['forecast']['forecastday'][0]['hour'][time.hour]['wind_kph']
+        wind_scaled = round(wind_kph / 5) + 1
+
+        return f"Wind: {wind_scaled}kph"
+
+
 
     @render.text
     async def desired_temp():
