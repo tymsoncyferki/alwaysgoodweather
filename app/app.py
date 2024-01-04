@@ -10,6 +10,8 @@ from io import BytesIO
 from shiny.types import ImgData
 import random
 from datetime import datetime, timedelta
+from plotnine import ggplot, geom_line, aes
+
 
 model = load('temp_model.joblib')
 
@@ -43,42 +45,46 @@ app_ui = ui.page_fluid(
                                      ui.input_action_button("go", label="Go", width='100%', class_="btn-primary")
                                      ),
                           ),
-
                           # suggestions
                           ui.output_text("loc1"),
                           ui.output_text("loc2"),
                           ui.output_text("loc3"),
                           ui.tags.br(),
-
                           # weather now
                           ui.output_ui("forecast"),
-
                       ),
                   ),
                   ),
         ui.column(3)
     ),
-
 )
 
 
 def server(input, output, session):
+
     @reactive.Effect()
     def _():
+        """
+        Gets locations based on current prompt
+        """
         prompt = input.location()
         global response_l, code_l
         response_l, code_l = WeatherApi.get_locations(prompt)
 
     @reactive.Effect()
     def _():
+        """
+        Gets forecast in provided location
+        """
         input.go()
         with reactive.isolate():
             location = input.location()
             global response_w, code_w
-            response_w, code_w = WeatherApi.get_response_forecast(location, 1)
+            response_w, code_w = WeatherApi.get_response_forecast(location, 2)
 
     @render.text
     def loc1():
+        """ Main location name. Displayed at all times """
         input.location()
         global response_l, code_l
         name = ""
@@ -90,6 +96,7 @@ def server(input, output, session):
 
     @render.text
     def loc2():
+        """ Second location recommendation. Available only on reload """
         input.location()
         global response_l, code_l
         name = ""
@@ -104,6 +111,7 @@ def server(input, output, session):
 
     @render.text
     def loc3():
+        """ Third location recommendation. Available only on reload """
         input.location()
         global response_l, code_l
         name = ""
@@ -116,26 +124,16 @@ def server(input, output, session):
             return ""
         return name
 
-    def scale_temp(lat, lon, temp):
-        predictions = model.predict(np.array([[lat, lon]]))[0]
-
-        if temp < predictions[2]:
-            slope, intercept = np.polyfit([predictions[0], predictions[2]], [predictions[3], predictions[5]], deg=1)
-        else:
-            slope, intercept = np.polyfit([predictions[1], predictions[2]], [predictions[4], predictions[5]], deg=1)
-
-        return slope * temp + intercept
-
     @render.ui
     def forecast():
+        """
+        Displays main forecast UI after clicking GO button
+        """
         input.go()
 
         global response_w, code_w
 
         if code_w == 200:
-            wind = random.randint(2, 6)
-            rain = random.randint(0, 3) * 5
-
             local_time = response_w['location']['localtime']
             local_date = datetime.strptime(local_time, '%Y-%m-%d %H:%M')
 
@@ -148,23 +146,31 @@ def server(input, output, session):
                            ui.h1(ui.output_text("temp"), style="font-size: 3em;")),
                     ui.div({"class": "col-auto"},
                            ui.span(ui.output_text("wind")),
-                           ui.span(f"Rain: {rain}%"))
+                           ui.span(ui.output_text("rain")),
+                           ui.span(ui.output_text("time")))
                 ),
+                # ui.output_plot("plot"),
                 ui.tags.style(".irs-grid-pol.small {height: 0px;}", type="text/css"),
                 ui.input_slider("time", label="", min=local_date,
-                                max=(local_date + timedelta(hours=24)), step=timedelta(hours=1),
-                                value=local_date, time_format="%H", post=":00")
+                                max=(local_date + timedelta(hours=23)), step=timedelta(hours=1),
+                                value=local_date, time_format="%H", post=":00"),
             )
 
     @render.ui
     def icon():
+        """
+        Displays weather icon
+        """
         time = input.time()
+        hour = time.hour + 1
+        if hour == 24:
+            hour = 0
 
         global response_w
 
-        code = response_w['forecast']['forecastday'][0]['hour'][time.hour]["condition"]['code']
+        code = response_w['forecast']['forecastday'][0]['hour'][hour]["condition"]['code']
 
-        if response_w['forecast']['forecastday'][0]['hour'][time.hour]['is_day'] == 1:
+        if response_w['forecast']['forecastday'][0]['hour'][hour]['is_day'] == 1:
             if code == 1000 or code == 1003:
                 return ui.img(src="https://cdn.weatherapi.com/weather/64x64/day/113.png", height='100%',
                               style="display: inline-block;")
@@ -177,45 +183,86 @@ def server(input, output, session):
 
     @render.text
     def temp():
+        """ Returns desired temperature """
         time = input.time()
+        hour = time.hour + 1
+        if hour == 24:
+            hour = 0
 
         global response_w
 
         lat = response_w['location']['lat']
         lon = response_w['location']['lon']
-        temperature = response_w['forecast']['forecastday'][0]['hour'][time.hour]['temp_c']
-        temp_scaled = scale_temp(lat, lon, temperature)
 
-        return round(temp_scaled)
+        local_time = response_w['location']['localtime']
+        local_date = datetime.strptime(local_time, '%Y-%m-%d %H:%M')
+
+        if hour >= local_date.hour:
+            temperature = response_w['forecast']['forecastday'][0]['hour'][hour]['temp_c']
+        else:
+            temperature = response_w['forecast']['forecastday'][1]['hour'][hour]['temp_c']
+        temp_scaled = round(scale_temp(lat, lon, temperature))
+
+        return f"{temp_scaled}°"
 
     @render.text
     def wind():
+        """ Returns desired wind speed """
         time = input.time()
+        hour = time.hour + 1
+        if hour == 24:
+            hour = 0
 
         global response_w
 
-        wind_kph = response_w['forecast']['forecastday'][0]['hour'][time.hour]['wind_kph']
+        wind_kph = response_w['forecast']['forecastday'][0]['hour'][hour]['wind_kph']
         wind_scaled = round(wind_kph / 5) + 1
 
         return f"Wind: {wind_scaled}kph"
 
     @render.text
-    async def desired_temp():
-        input.go()
+    def rain():
+        """ Returns desired precipitation """
+        time = input.time()
+        hour = time.hour + 1
+        if hour == 24:
+            hour = 0
 
-        with reactive.isolate():
+        global response_w
 
-            global response_w, code_w
+        rain_chance = response_w['forecast']['forecastday'][0]['hour'][hour]['chance_of_rain']
+        rain_scaled = round(rain_chance / 10)
 
-            try:
-                lat = response_w['location']['lat']
-                lon = response_w['location']['lon']
+        return f"Rain: {rain_scaled}%"
 
-                temp = scale_temp(lat, lon, response_w['current']['temp_c'])
+    @render.text
+    def time():
+        time = input.time()
+        hour = time.hour + 1
+        if hour == 24:
+            hour = 0
 
-                return f"Yeeeey! The temperature is {round(temp)} Celsius degrees. Have fun"
-            except (KeyError, IndexError):
-                return "No data"
+        local_time = response_w['location']['localtime']
+        local_date = datetime.strptime(local_time, '%Y-%m-%d %H:%M')
+
+        if hour >= local_date.hour:
+            time_response = response_w['forecast']['forecastday'][0]['hour'][hour]['time']
+        else:
+            time_response = response_w['forecast']['forecastday'][1]['hour'][hour]['time']
+
+        return f"Time: {time_response}"
+
+
+    def scale_temp(lat, lon, temp):
+        """ Scales temperature to desired value """
+        predictions = model.predict(np.array([[lat, lon]]))[0]
+
+        if temp < predictions[2]:
+            slope, intercept = np.polyfit([predictions[0], predictions[2]], [predictions[3], predictions[5]], deg=1)
+        else:
+            slope, intercept = np.polyfit([predictions[1], predictions[2]], [predictions[4], predictions[5]], deg=1)
+
+        return slope * temp + intercept
 
 
 app = App(app_ui, server)
