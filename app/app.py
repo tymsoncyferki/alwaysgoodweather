@@ -4,7 +4,7 @@ from weather_api import WeatherApi
 import numpy as np
 import shinyswatch
 from datetime import datetime, timedelta
-from plotnine import ggplot, geom_line, aes
+from plotnine import ggplot, geom_line, aes, geom_smooth
 
 
 model = load('temp_model.joblib')
@@ -140,14 +140,14 @@ def server(input, output, session):
                            ui.h1(ui.output_text("temp"), style="font-size: 3em;")),
                     ui.div({"class": "col-auto"},
                            ui.span(ui.output_text("wind")),
-                           ui.span(ui.output_text("rain")),
-                           ui.span(ui.output_text("time")))
+                           ui.span(ui.output_text("rain")))
                 ),
-                # ui.output_plot("plot"),
+                ui.output_plot("plot"),
                 ui.tags.style(".irs-grid-pol.small {height: 0px;}", type="text/css"),
                 ui.input_slider("time", label="", min=local_date,
                                 max=(local_date + timedelta(hours=24)), step=timedelta(hours=1),
                                 value=local_date, time_format="%H", post=":00"),
+                ui.span(ui.output_text("time"))
             )
 
     @render.ui
@@ -251,6 +251,36 @@ def server(input, output, session):
 
         return f"Time: {time_response}"
 
+    @render.plot
+    def plot():
+
+        input.go()
+
+        global response_w
+
+        local_time = response_w['location']['localtime']
+        local_date = datetime.strptime(local_time, '%Y-%m-%d %H:%M')
+        x = [local_date]
+        for i in range(24):
+            x.append(x[i] + timedelta(hours=1))
+
+        temps = []
+        for date in x:
+            if date.date() <= local_date.date():
+                temps.append(response_w['forecast']['forecastday'][0]['hour'][date.hour]['temp_c'])
+            else:
+                temps.append(response_w['forecast']['forecastday'][1]['hour'][date.hour]['temp_c'])
+
+        lat = response_w['location']['lat']
+        lon = response_w['location']['lon']
+
+        print(temps)
+        y = [round(scale_temp(lat, lon, temperature)) for temperature in temps]
+        print(y)
+
+        temp_plot = (ggplot() + geom_line(aes(x, y)))
+
+        return temp_plot
 
     def scale_temp(lat, lon, temp):
         """ Scales temperature to desired value """
