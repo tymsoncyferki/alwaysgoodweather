@@ -1,24 +1,18 @@
 from shiny import App, render, ui, reactive
 from joblib import load
-from data.data import plot_map
 from weather_api import WeatherApi
 import numpy as np
 import shinyswatch
-from PIL import Image
-import requests
-from io import BytesIO
-from shiny.types import ImgData
-import random
 from datetime import datetime, timedelta
 from plotnine import ggplot, geom_line, aes
 
 
 model = load('temp_model.joblib')
 
-response_l = None
-code_l = None
-response_w = None
-code_w = None
+response_l = dict()
+code_l = dict()
+response_w = dict()
+code_w = dict()
 
 app_ui = ui.page_fluid(
 
@@ -152,7 +146,7 @@ def server(input, output, session):
                 # ui.output_plot("plot"),
                 ui.tags.style(".irs-grid-pol.small {height: 0px;}", type="text/css"),
                 ui.input_slider("time", label="", min=local_date,
-                                max=(local_date + timedelta(hours=23)), step=timedelta(hours=1),
+                                max=(local_date + timedelta(hours=24)), step=timedelta(hours=1),
                                 value=local_date, time_format="%H", post=":00"),
             )
 
@@ -161,10 +155,8 @@ def server(input, output, session):
         """
         Displays weather icon
         """
-        time = input.time()
-        hour = time.hour + 1
-        if hour == 24:
-            hour = 0
+        time = input.time() + timedelta(hours=1)
+        hour = time.hour
 
         global response_w
 
@@ -184,10 +176,8 @@ def server(input, output, session):
     @render.text
     def temp():
         """ Returns desired temperature """
-        time = input.time()
-        hour = time.hour + 1
-        if hour == 24:
-            hour = 0
+        time = input.time() + timedelta(hours=1)
+        hour = time.hour
 
         global response_w
 
@@ -197,10 +187,11 @@ def server(input, output, session):
         local_time = response_w['location']['localtime']
         local_date = datetime.strptime(local_time, '%Y-%m-%d %H:%M')
 
-        if hour >= local_date.hour:
+        if time.date() <= local_date.date():
             temperature = response_w['forecast']['forecastday'][0]['hour'][hour]['temp_c']
         else:
             temperature = response_w['forecast']['forecastday'][1]['hour'][hour]['temp_c']
+
         temp_scaled = round(scale_temp(lat, lon, temperature))
 
         return f"{temp_scaled}°"
@@ -208,14 +199,19 @@ def server(input, output, session):
     @render.text
     def wind():
         """ Returns desired wind speed """
-        time = input.time()
-        hour = time.hour + 1
-        if hour == 24:
-            hour = 0
+        time = input.time() + timedelta(hours=1)
+        hour = time.hour
 
         global response_w
 
-        wind_kph = response_w['forecast']['forecastday'][0]['hour'][hour]['wind_kph']
+        local_time = response_w['location']['localtime']
+        local_date = datetime.strptime(local_time, '%Y-%m-%d %H:%M')
+
+        if time.date() <= local_date.date():
+            wind_kph = response_w['forecast']['forecastday'][0]['hour'][hour]['wind_kph']
+        else:
+            wind_kph = response_w['forecast']['forecastday'][1]['hour'][hour]['wind_kph']
+
         wind_scaled = round(wind_kph / 5) + 1
 
         return f"Wind: {wind_scaled}kph"
@@ -223,29 +219,32 @@ def server(input, output, session):
     @render.text
     def rain():
         """ Returns desired precipitation """
-        time = input.time()
-        hour = time.hour + 1
-        if hour == 24:
-            hour = 0
+        time = input.time() + timedelta(hours=1)
+        hour = time.hour
 
         global response_w
 
-        rain_chance = response_w['forecast']['forecastday'][0]['hour'][hour]['chance_of_rain']
+        local_time = response_w['location']['localtime']
+        local_date = datetime.strptime(local_time, '%Y-%m-%d %H:%M')
+
+        if time.date() <= local_date.date():
+            rain_chance = response_w['forecast']['forecastday'][0]['hour'][hour]['chance_of_rain']
+        else:
+            rain_chance = response_w['forecast']['forecastday'][1]['hour'][hour]['chance_of_rain']
+
         rain_scaled = round(rain_chance / 10)
 
         return f"Rain: {rain_scaled}%"
 
     @render.text
     def time():
-        time = input.time()
-        hour = time.hour + 1
-        if hour == 24:
-            hour = 0
+        time = input.time() + timedelta(hours=1)
+        hour = time.hour
 
         local_time = response_w['location']['localtime']
         local_date = datetime.strptime(local_time, '%Y-%m-%d %H:%M')
 
-        if hour >= local_date.hour:
+        if time.date() <= local_date.date():
             time_response = response_w['forecast']['forecastday'][0]['hour'][hour]['time']
         else:
             time_response = response_w['forecast']['forecastday'][1]['hour'][hour]['time']
@@ -258,9 +257,12 @@ def server(input, output, session):
         predictions = model.predict(np.array([[lat, lon]]))[0]
 
         if temp < predictions[2]:
-            slope, intercept = np.polyfit([predictions[0], predictions[2]], [predictions[3], predictions[5]], deg=1)
+            coefficients = np.polyfit([predictions[0], predictions[2]], [predictions[3], predictions[5]], deg=1)
         else:
-            slope, intercept = np.polyfit([predictions[1], predictions[2]], [predictions[4], predictions[5]], deg=1)
+            coefficients = np.polyfit([predictions[1], predictions[2]], [predictions[4], predictions[5]], deg=1)
+
+        slope = coefficients[0]
+        intercept = coefficients[1]
 
         return slope * temp + intercept
 
