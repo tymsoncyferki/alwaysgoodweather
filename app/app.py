@@ -4,8 +4,10 @@ from weather_api import WeatherApi
 import numpy as np
 import shinyswatch
 from datetime import datetime, timedelta
-from plotnine import ggplot, geom_line, aes, geom_smooth
-
+from plotnine import ggplot, geom_line, geom_point, geom_area, geom_ribbon, aes, theme, scale_y_continuous,\
+    scale_x_continuous, element_rect, scale_x_datetime, stat_smooth, theme_minimal, element_blank
+from mizani.formatters import date_format
+from mizani.breaks import date_breaks
 
 model = load('temp_model.joblib')
 
@@ -139,15 +141,16 @@ def server(input, output, session):
                     ui.div({"class": "col-auto"},
                            ui.h1(ui.output_text("temp"), style="font-size: 3em;")),
                     ui.div({"class": "col-auto"},
+                           ui.span(ui.output_text("time")),
                            ui.span(ui.output_text("wind")),
                            ui.span(ui.output_text("rain")))
                 ),
-                ui.output_plot("plot"),
+                ui.div(ui.output_plot("plot", height=100), style="margin-left: -6%"),
                 ui.tags.style(".irs-grid-pol.small {height: 0px;}", type="text/css"),
                 ui.input_slider("time", label="", min=local_date,
                                 max=(local_date + timedelta(hours=24)), step=timedelta(hours=1),
-                                value=local_date, time_format="%H", post=":00"),
-                ui.span(ui.output_text("time"))
+                                value=local_date, time_format="%H", post=":00", width='95%')
+
             )
 
     @render.ui
@@ -232,6 +235,7 @@ def server(input, output, session):
         else:
             rain_chance = response_w['forecast']['forecastday'][1]['hour'][hour]['chance_of_rain']
 
+        print(rain_chance)
         rain_scaled = round(rain_chance / 10)
 
         return f"Rain: {rain_scaled}%"
@@ -249,7 +253,7 @@ def server(input, output, session):
         else:
             time_response = response_w['forecast']['forecastday'][1]['hour'][hour]['time']
 
-        return f"Time: {time_response}"
+        return f"{time_response}"
 
     @render.plot
     def plot():
@@ -274,12 +278,26 @@ def server(input, output, session):
         lat = response_w['location']['lat']
         lon = response_w['location']['lon']
 
-        print(temps)
         y = [round(scale_temp(lat, lon, temperature)) for temperature in temps]
-        print(y)
+        labels = [str(date.hour % 24) for date in x]
+        x = list(range(25))
 
-        temp_plot = (ggplot() + geom_line(aes(x, y)))
-
+        temp_plot = (
+                ggplot(aes(x, y)) +
+                geom_line() +
+                geom_ribbon(aes(ymax='y', ymin=min(y)-1), fill='lightblue', alpha=0.3) +
+                scale_y_continuous(limits=(min(y) - 1, max(y) + 1)) +
+                scale_x_continuous(breaks=x[::2], labels=labels[::2]) +
+                theme(figure_size=(16, 4), rect=element_rect(alpha=0),
+                      panel_grid_major=element_blank(),
+                      panel_grid_minor=element_blank(),
+                      panel_border=element_blank(),
+                      axis_line=element_blank(),
+                      axis_text_y=element_blank(),
+                      axis_ticks=element_blank(),
+                      panel_spacing_y=0
+                      )
+        )
         return temp_plot
 
     def scale_temp(lat, lon, temp):
