@@ -147,7 +147,9 @@ def server(input, output, session):
                            ui.span(ui.output_text("wind")),
                            ui.span(ui.output_text("rain")))
                 ),
-                ui.div(ui.output_plot("plot", height=100), style="margin-left: -6%"),
+                ui.div(ui.output_plot("plot", height=150),
+                       style="margin-left: -6%"
+                       ),
                 ui.tags.style(".irs-grid-pol.small {height: 0px;}", type="text/css"),
                 ui.input_slider("time", label="", min=local_date,
                                 max=(local_date + timedelta(hours=24)), step=timedelta(hours=1),
