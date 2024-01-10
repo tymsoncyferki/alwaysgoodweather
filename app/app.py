@@ -1,3 +1,5 @@
+import random
+
 from shiny import App, render, ui, reactive
 from joblib import load
 from weather_api import WeatherApi
@@ -237,6 +239,11 @@ def server(input, output, session):
 
         print(rain_chance)
         rain_scaled = round(rain_chance / 10)
+
+        if rain_scaled == 0:
+            rain_scaled = rain_scaled + random.randint(0, 3)
+        else:
+            rain_scaled = rain_scaled - random.randint(0, 3)
 
         return f"Rain: {rain_scaled}%"
 
