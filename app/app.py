@@ -6,12 +6,10 @@ from weather_api import WeatherApi
 import numpy as np
 import shinyswatch
 from datetime import datetime, timedelta
-from plotnine import ggplot, geom_line, geom_point, geom_area, geom_ribbon, aes, theme, scale_y_continuous,\
-    scale_x_continuous, element_rect, scale_x_datetime, stat_smooth, theme_minimal, element_blank
-from mizani.formatters import date_format
-from mizani.breaks import date_breaks
+from plotnine import ggplot, geom_line, geom_ribbon, aes, theme, scale_y_continuous, scale_x_continuous, element_rect,\
+    element_blank
 
-model = load('temp_model.joblib')
+model = load('www/temp_model.joblib')
 
 response_l = dict()
 code_l = dict()
@@ -239,7 +237,6 @@ def server(input, output, session):
         else:
             rain_chance = response_w['forecast']['forecastday'][1]['hour'][hour]['chance_of_rain']
 
-        print(rain_chance)
         rain_scaled = round(rain_chance / 10)
 
         if rain_scaled == 0:
