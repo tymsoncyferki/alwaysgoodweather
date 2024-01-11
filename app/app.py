@@ -11,11 +11,30 @@ from xgboost import XGBRegressor
 
 model = XGBRegressor()
 model.load_model('www/temp_model.json')
+print("model loaded")
 
 response_l = dict()
 code_l = dict()
 response_w = dict()
 code_w = dict()
+
+# dummy plot for shiny rendering
+dummy_plot = (
+        ggplot(aes([1, 2, 3], [3, 3, 3])) +
+        geom_line() +
+        geom_ribbon(aes(ymax='y', ymin=2), fill='lightblue', alpha=0.3) +
+        scale_y_continuous(limits=(2, 4)) +
+        scale_x_continuous(breaks=[1, 2, 3], labels=['1', '2', '3']) +
+        theme(figure_size=(16, 4), rect=element_rect(alpha=0),
+              panel_grid_major=element_blank(),
+              panel_grid_minor=element_blank(),
+              panel_border=element_blank(),
+              axis_line=element_blank(),
+              axis_text_y=element_blank(),
+              axis_ticks=element_blank(),
+              panel_spacing_y=0
+              )
+)
 
 app_ui = ui.page_fluid(
 
@@ -133,6 +152,7 @@ def server(input, output, session):
         if code_w == 200:
             local_time = response_w['location']['localtime']
             local_date = datetime.strptime(local_time, '%Y-%m-%d %H:%M')
+            local_date = local_date - timedelta(hours=1)  # only for deployment
 
             return ui.div(
                 ui.row(
