@@ -1,15 +1,16 @@
 import random
 
 from shiny import App, render, ui, reactive
-from joblib import load
 from weather_api import WeatherApi
 import numpy as np
 import shinyswatch
 from datetime import datetime, timedelta
 from plotnine import ggplot, geom_line, geom_ribbon, aes, theme, scale_y_continuous, scale_x_continuous, element_rect,\
     element_blank
+from xgboost import XGBRegressor
 
-model = load('www/temp_model.joblib')
+model = XGBRegressor()
+model.load_model('www/temp_model.json')
 
 response_l = dict()
 code_l = dict()
