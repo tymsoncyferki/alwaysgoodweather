@@ -126,4 +126,5 @@ def plot_map(num_points, index, model, marker_size):
     world = gpd.read_file('data/maps/ne_110m_admin_0_countries.shp')
 
     ax = world.plot(figsize=(10, 6))
-    gdf.plot(ax=ax, marker='s', c=gdf['temperature'], markersize=marker_size, legend=True, alpha=0.4)
+    return gdf.plot(ax=ax, marker='s', c=gdf['temperature'], markersize=marker_size, legend=True, alpha=0.4)
+
